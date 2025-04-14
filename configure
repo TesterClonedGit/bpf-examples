@@ -314,7 +314,7 @@ EOF
 echo "# Generated config" >$CONFIG
 quiet_config >> $CONFIG
 
-check_opts()
+check_opts
 check_toolchain
 
 echo -n "libcap support: "
