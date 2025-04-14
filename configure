@@ -14,6 +14,45 @@ trap 'status=$?; rm -rf $TMPDIR; rm -f $CONFIG; exit $status' EXIT HUP INT QUIT 
 SUBMODULE_LIBBPF=0
 ARCH_INCLUDES=
 
+check_opts()
+{
+    : ${PRODUCTION:=0}
+    : ${DYNAMIC_LIBXDP:=0}
+    : ${MAX_DISPATCHER_ACTIONS:=10}
+    : ${BPF_TARGET:=bpf}
+    echo "PRODUCTION:=${PRODUCTION}" >>$CONFIG
+    echo "DYNAMIC_LIBXDP:=${DYNAMIC_LIBXDP}" >>$CONFIG
+    echo "MAX_DISPATCHER_ACTIONS:=${MAX_DISPATCHER_ACTIONS}" >>$CONFIG
+    echo "BPF_TARGET:=${BPF_TARGET}" >>$CONFIG
+}
+
+find_tool()
+{
+    local tool_name
+    local tool_path
+    local v
+
+    tool_name="$1"
+    tool_path="$2"
+
+    if [ "$tool_name" != "$tool_path" ] || command -v "$tool_path" >/dev/null 2>&1; then
+        echo $tool_path
+        return 0
+    fi
+
+    # we're looking for a binary with the same name as tool_name; try version
+    # suffixes in order until we find one
+    for v in 17 16 15 14 13 12 11; do
+        tool_path="${tool_name}-$v"
+        if command -v "$tool_path" >/dev/null 2>&1; then
+            echo $tool_path
+            return 0
+        fi
+    done
+
+    # Fall back to supplied default, check in caller will error out
+    echo $tool_name
+}
 check_toolchain()
 {
     local clang_version
@@ -23,6 +62,8 @@ check_toolchain()
     : ${CLANG=clang}
     : ${LLC=llc}
     : ${BPFTOOL=bpftool}
+
+    CLANG=$(find_tool clang "$CLANG")
 
     for TOOL in $PKG_CONFIG $CC $CLANG $LLC $BPFTOOL; do
         if [ ! $(command -v ${TOOL} 2>/dev/null) ]; then
@@ -273,6 +314,7 @@ EOF
 echo "# Generated config" >$CONFIG
 quiet_config >> $CONFIG
 
+check_opts()
 check_toolchain
 
 echo -n "libcap support: "
